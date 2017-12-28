@@ -1,0 +1,7 @@
+[package]
+name = "sharp-dice"
+version = "0.1.0"
+authors = ["decentninja <very@decent.ninja>"]
+
+[dependencies]
+rand = "0.4"
