@@ -57,7 +57,7 @@ fn d20_fumbelable(rng: &mut rand::ThreadRng) -> FumbelableRoll {
 enum CommandError {
     ParseError,
     NotEnoughArguments,
-    NotRecognizedArgument(String)
+    NotRecognizedCommand,
 }
 
 impl From<std::option::NoneError> for CommandError {
@@ -103,23 +103,25 @@ fn command(line: String, last: &str, rng: &mut rand::ThreadRng) -> Result<String
         }
         "d20" => {
             let dc = parts.next()?.parse::<i32>()?;
-            let your_bonus = parts.next()?.parse::<i32>()?;
+            let your_bonus = parts.next().unwrap_or("0").parse::<i32>()?;
             match d20_fumbelable(rng) {
                 FumbelableRoll::Fumble(_) => {
-                    println!("[1d20 = [1 Fumble!]");
+                    println!("[1d20 = [1 Fumble] MEGA FAIL");
                 },
                 FumbelableRoll::Roll(roll) => {
                     let result = roll.value + your_bonus;
                     if roll.ncrit == 1 {
-                        println!("1d20@20 = [20!]]");
+                        println!("1d20@20 = [20!] SUPER SUCCESS");
                     } else if result >= dc {
-                        println!("{} + 1d20@{} = [{}]", your_bonus, roll.value, result);
+                        println!("{} + 1d20@{} = [{}] >= {} SUCCESS", your_bonus, roll.value, result, dc);
+                    } else {
+                        println!("{} + 1d20@{} = [{}] >!= {} FAIL", your_bonus, roll.value, result, dc);
                     }
                 }
 
             }
         }
-        _ => return Err(CommandError::NotRecognizedArgument(command.to_string()))
+        _ => return Err(CommandError::NotRecognizedCommand)
     }
     Ok(this)
 }
@@ -129,9 +131,22 @@ fn app() -> Result<(), std::io::Error> {
     let mut rng = rand::thread_rng();
     let mut last = "o100 0 0".to_string();
     for line in stdin.lock().lines() {
+        println!("");
+        let instructions = "
+Instruction:
+o100 <your bonus> <enemy bonus> <?range>o
+d20 <dc> <?your bonus>
+        ";
         match command(line?, &last, &mut rng) {
             Ok(l) => last = l,
-            Err(_) => println!("o <your bonus> <enemy bonus> <range?>"),
+            Err(e) => {
+                match e {
+                    CommandError::ParseError => println!("Could not parse arguments"),
+                    CommandError::NotEnoughArguments => println!("Not enought arguments"),
+                    CommandError::NotRecognizedCommand => println!("Not recognized command")
+                }
+                println!("{}", instructions);
+            }
         }
     }
     Ok(())
