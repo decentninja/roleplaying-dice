@@ -15,7 +15,7 @@ enum FumbelableRoll {
     Roll(Roll),
 }
 
-fn open_ended_roll(rng: &mut rand::ThreadRng) -> Roll {
+fn d100_open(rng: &mut rand::ThreadRng) -> Roll {
     let dice = Range::new(1, 100);
     let mut roll = dice.ind_sample(rng);
     let mut total = roll;
@@ -31,12 +31,27 @@ fn open_ended_roll(rng: &mut rand::ThreadRng) -> Roll {
     }
 }
 
-fn fumbelable_roll(rng: &mut rand::ThreadRng) -> FumbelableRoll {
-    let roll = open_ended_roll(rng);
+fn d100_open_fumbelable(rng: &mut rand::ThreadRng) -> FumbelableRoll {
+    let roll = d100_open(rng);
     if roll.value <= 5 {
-        return FumbelableRoll::Fumble(open_ended_roll(rng))
+        return FumbelableRoll::Fumble(d100_open(rng))
     }
     FumbelableRoll::Roll(roll)
+}
+
+fn d20_fumbelable(rng: &mut rand::ThreadRng) -> FumbelableRoll {
+    let dice = Range::new(1, 20);
+    let roll = dice.ind_sample(rng);
+    if roll == 1 {
+        return FumbelableRoll::Fumble(Roll {
+            value: 1,
+            ncrit: 0
+        })
+    }
+    return FumbelableRoll::Roll(Roll {
+        value: roll,
+        ncrit: if roll == 20 { 1 } else { 0 }
+    })
 }
 
 enum CommandError {
@@ -69,12 +84,13 @@ fn command(line: String, last: &str, rng: &mut rand::ThreadRng) -> Result<String
         }
     };
     match command {
-        "o" => {
+        // TODO: Add delay and suspence in printout
+        "o100" => {
             let your_bonus = parts.next()?.parse::<i32>()?;
             let enemy_bonus = parts.next()?.parse::<i32>()?;
             let distance = parts.next().unwrap_or("0").parse::<i32>()?;
             let excla = |n| "!".repeat(n as usize);
-            match fumbelable_roll(rng) {
+            match d100_open_fumbelable(rng) {
                 FumbelableRoll::Fumble(roll) => {
                     println!("[Fumble {}{}]", roll.value, excla(roll.ncrit));
                 },
@@ -85,6 +101,24 @@ fn command(line: String, last: &str, rng: &mut rand::ThreadRng) -> Result<String
                 }
             }
         }
+        "d20" => {
+            let dc = parts.next()?.parse::<i32>()?;
+            let your_bonus = parts.next()?.parse::<i32>()?;
+            match d20_fumbelable(rng) {
+                FumbelableRoll::Fumble(_) => {
+                    println!("[1d20 = [1 Fumble!]");
+                },
+                FumbelableRoll::Roll(roll) => {
+                    let result = roll.value + your_bonus;
+                    if roll.ncrit == 1 {
+                        println!("1d20@20 = [20!]]");
+                    } else if result >= dc {
+                        println!("{} + 1d20@{} = [{}]", your_bonus, roll.value, result);
+                    }
+                }
+
+            }
+        }
         _ => return Err(CommandError::NotRecognizedArgument(command.to_string()))
     }
     Ok(this)
@@ -93,7 +127,7 @@ fn command(line: String, last: &str, rng: &mut rand::ThreadRng) -> Result<String
 fn app() -> Result<(), std::io::Error> {
     let stdin = io::stdin();
     let mut rng = rand::thread_rng();
-    let mut last = "o 0 0".to_string();
+    let mut last = "o100 0 0".to_string();
     for line in stdin.lock().lines() {
         match command(line?, &last, &mut rng) {
             Ok(l) => last = l,
