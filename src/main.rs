@@ -16,7 +16,7 @@ enum FumbelableRoll {
 }
 
 fn d100_open(rng: &mut rand::ThreadRng) -> Roll {
-    let dice = Range::new(1, 100);
+    let dice = Range::new(1, 101);
     let mut roll = dice.ind_sample(rng);
     let mut total = roll;
     let mut ncrit = 0;
