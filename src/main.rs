@@ -40,7 +40,7 @@ fn d100_open_fumbelable(rng: &mut rand::ThreadRng) -> FumbelableRoll {
 }
 
 fn d20_fumbelable(rng: &mut rand::ThreadRng) -> FumbelableRoll {
-    let dice = Range::new(1, 20);
+    let dice = Range::new(1, 21);
     let roll = dice.ind_sample(rng);
     if roll == 1 {
         return FumbelableRoll::Fumble(Roll {
@@ -91,14 +91,14 @@ fn command(line: String, last: &str, rng: &mut rand::ThreadRng) -> Result<String
             let distance = parts.next().unwrap_or("0").parse::<i32>()?;
             let excla = |n| "!".repeat(n as usize);
             let dodge = d100_open(rng);
+            let modifier = your_bonus - enemy_bonus - distance;
+            println!("Modifier:    {}{}", if modifier > 0 {"+"} else {""}  , modifier);
             match d100_open_fumbelable(rng) {
                 FumbelableRoll::Fumble(roll) => {
-                    println!("[Fumble {}{}]", roll.value, excla(roll.ncrit));
+                    println!("Attack d100: [Fumble {}{}]", roll.value, excla(roll.ncrit));
                 },
                 FumbelableRoll::Roll(roll) => {
-                    let modifier = your_bonus - enemy_bonus - distance;
                     let result = roll.value + modifier - dodge.value;
-                    println!("Modifier:    {}{}", if modifier > 0 {"+"} else {""}  , modifier);
                     println!("Attack d100: +{}{}", roll.value, excla(roll.ncrit));
                     println!("Dodge d100 : -{}{}", dodge.value, excla(dodge.ncrit));
                     println!("Result     : [{}]", result);
@@ -108,18 +108,19 @@ fn command(line: String, last: &str, rng: &mut rand::ThreadRng) -> Result<String
         "d20" => {
             let dc = parts.next()?.parse::<i32>()?;
             let your_bonus = parts.next().unwrap_or("0").parse::<i32>()?;
+            let sane = dc - your_bonus;
+            println!("DC - Modifier: {}", sane);
             match d20_fumbelable(rng) {
                 FumbelableRoll::Fumble(_) => {
-                    println!("[1d20 = [1 Fumble] MEGA FAIL");
+                    println!("roll d20     : [1 Fumble] MEGA FAIL");
                 },
                 FumbelableRoll::Roll(roll) => {
-                    let result = roll.value + your_bonus;
                     if roll.ncrit == 1 {
-                        println!("1d20@20 = [20!] SUPER SUCCESS");
-                    } else if result >= dc {
-                        println!("{} + 1d20@{} = [{}] >= {} SUCCESS", your_bonus, roll.value, result, dc);
+                        println!("roll d20     : [20!] SUPER SUCCESS");
+                    } else if roll.value >= sane {
+                        println!("roll d20     : [{}] >= {} SUCCESS", roll.value, sane);
                     } else {
-                        println!("{} + 1d20@{} = [{}] >!= {} FAIL", your_bonus, roll.value, result, dc);
+                        println!("roll d20     : [{}] >!= {} FAIL", roll.value, sane);
                     }
                 }
 
