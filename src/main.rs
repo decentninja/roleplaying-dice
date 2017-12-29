@@ -90,14 +90,18 @@ fn command(line: String, last: &str, rng: &mut rand::ThreadRng) -> Result<String
             let enemy_bonus = parts.next()?.parse::<i32>()?;
             let distance = parts.next().unwrap_or("0").parse::<i32>()?;
             let excla = |n| "!".repeat(n as usize);
+            let dodge = d100_open(rng);
             match d100_open_fumbelable(rng) {
                 FumbelableRoll::Fumble(roll) => {
                     println!("[Fumble {}{}]", roll.value, excla(roll.ncrit));
                 },
                 FumbelableRoll::Roll(roll) => {
                     let modifier = your_bonus - enemy_bonus - distance;
-                    let result = roll.value + modifier;
-                    println!("{} + 1d100@{} = [{}{}]", modifier, roll.value, result, excla(roll.ncrit));
+                    let result = roll.value + modifier - dodge.value;
+                    println!("Modifier:    {}{}", if modifier > 0 {"+"} else {""}  , modifier);
+                    println!("Attack d100: +{}{}", roll.value, excla(roll.ncrit));
+                    println!("Dodge d100 : -{}{}", dodge.value, excla(dodge.ncrit));
+                    println!("Result     : [{}]", result);
                 }
             }
         }
